@@ -4,7 +4,9 @@ dotenv.config();
 import WebSocketServer from "ws";
 import { init } from "./services/poap";
 
-const wss = new WebSocketServer.Server({ port: 8080 });
+const { WS_PORT } = process.env;
+
+const wss = new WebSocketServer.Server({ port: WS_PORT ? parseInt(WS_PORT) : 8080 });
 
 // Creating connection using websocket
 wss.on("connection", (ws: WebSocketServer) => {
