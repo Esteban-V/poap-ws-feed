@@ -26,7 +26,7 @@ git clone https://github.com/Esteban-V/poap-ws-feed
 2. Install dependencies:
 
 ```
-cd poap-websocket-service
+cd poap-ws-feed
 npm install
 ```
 
