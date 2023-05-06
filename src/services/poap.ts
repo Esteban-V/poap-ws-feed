@@ -47,9 +47,12 @@ const subscribeToTransfer = (
       if (lastHash === txHash) return;
 
       try {
-        const poapInfo = await getPOAPInfo(tokenId, result);
+        const poapInfo = await getPOAPInfo(tokenId, result).catch((e) => {
+          console.error("Error getting POAP info", e);
+          return null;
+        });
 
-        wss.clients.forEach((client: WebSocketServer) => {
+        poapInfo && wss.clients.forEach((client: WebSocketServer) => {
           client.send(JSON.stringify(poapInfo));
         });
 
@@ -69,57 +72,39 @@ const subscribeToTransfer = (
     });
 };
 
-export const getTokenInfo = (tokenId: number | string) => {
-  const url = `${POAP_API_BASEURL}/token/${tokenId}`;
-  return fetch(url, {
-    method: "GET",
-    headers: getApiHeaders(),
-  }).then((response) => response.json());
-};
-
-export const getAddressInfo = (address: string) => {
-  const url = `${POAP_API_BASEURL}/actions/scan/${address}`;
-  return fetch(url, {
-    method: "GET",
-    headers: getApiHeaders(),
-    retry: 3,
-  }).then((response) => response.json());
-};
-
-export const getENS = (address: string) => {
-  const url = `${POAP_API_BASEURL}/actions/ens_lookup/${address}`;
-  return fetch(url, {
+const fetchWithRetry = (url: string) =>
+  fetch(url, {
     method: 'GET',
     headers: getApiHeaders(),
     retry: 3,
   }).then((response) => response.json());
-};
 
-function delay(time: number) {
-  return new Promise((resolve) => setTimeout(resolve, time));
-} 
+export const getTokenInfo = (tokenId: number | string) =>
+  fetchWithRetry(`${POAP_API_BASEURL}/token/${tokenId}`);
+
+export const getAddressInfo = (address: string) =>
+  fetchWithRetry(`${POAP_API_BASEURL}/actions/scan/${address}`);
+
+export const getENS = (address: string) =>
+  fetchWithRetry(`${POAP_API_BASEURL}/actions/ens_lookup/${address}`);
+
+const delay = (time: number) => new Promise((resolve) => setTimeout(resolve, time));
 
 export const getPOAPInfo = async (tokenId: number | string, data: any) => {
-  let tokenData, ens, poapPower;
-  await delay(5000); // POAP API is not fast enough to get the token info	
-  try {
-    tokenData = await getTokenInfo(tokenId);
-    const addressPoaps = await getAddressInfo(tokenData.owner);
-    poapPower = addressPoaps.length;
-    const ensLookup = await getENS(tokenData.owner);
-    ens = ensLookup.valid ? ensLookup.ens : undefined;
-  } catch (e) {
-    console.error("Error getting token info", e);
-    poapPower = 0;
-  }
+  await delay(5000); // POAP API is not fast enough to get the token info
+
+  const [tokenData, addressPoaps, ensLookup] = await Promise.all([
+    getTokenInfo(tokenId),
+    getAddressInfo(data.returnValues.to),
+    getENS(data.returnValues.to),
+  ]);
+
+  const poapPower = addressPoaps.length;
+  const ens = ensLookup.valid ? ensLookup.ens : undefined;
 
   const { from: fromAddress, to: toAddress } = data.returnValues;
   const action =
-    fromAddress === config.zeroX
-      ? Action.MINT
-      : toAddress === config.zeroX
-      ? Action.BURN
-      : Action.TRANSFER;
+    fromAddress === config.zeroX ? Action.MINT : toAddress === config.zeroX ? Action.BURN : Action.TRANSFER;
 
   return {
     ...tokenData,
