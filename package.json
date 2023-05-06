@@ -31,11 +31,10 @@
   },
   "dependencies": {
     "@types/ws": "^8.5.4",
-    "axios": "^1.4.0",
-    "axios-retry": "^3.4.0",
     "dotenv": "^16.0.3",
     "husky": "^8.0.3",
     "node-fetch": "^2.6.9",
+    "node-fetch-retry": "^2.0.1",
     "prettier": "^2.8.8",
     "ts-node-dev": "^2.0.0",
     "web3": "^1.9.0",

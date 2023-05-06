@@ -1,11 +1,10 @@
-import fetch, { Headers } from "node-fetch";
+import { Headers } from "node-fetch";
 import Web3 from "web3";
 import { AbiItem } from "web3-utils";
 import config from "../config";
-import axios from "axios";
-import axiosRetry from "axios-retry";
 import WebSocketServer from "ws";
 import poapAbi from "../abi/poap.json";
+import fetch from "node-fetch-retry";
 import { Network } from "../types/networks";
 import { Action } from "../types/actions";
 import { powerEmoji } from "../utils/poap";
@@ -22,21 +21,7 @@ export const init = (wss: WebSocketServer.Server) => {
   }
 
   const web3xDai = new Web3(new Web3.providers.WebsocketProvider(XDAI_WS_PROVIDER, config.web3Options));
-
   const web3Mainnet = new Web3(new Web3.providers.WebsocketProvider(MAINNET_WS_PROVIDER, config.web3Options));
-
-  axiosRetry(axios, {
-    retries: 3, // retry request 3 times
-    retryDelay: (retryCount) => {
-      console.log(`Retry attempt: ${retryCount}`);
-      return retryCount * 4000; // time interval between retries
-    },
-    retryCondition: (error) => {
-      if (!error.response) return true;
-      // retry on any network error, or 4xx or 5xx status codes
-      return error.response.status >= 400;
-    },
-  });
 
   subscribeToTransfer(wss, web3xDai, POAP_CONTRACT, Network.XDAI);
   subscribeToTransfer(wss, web3Mainnet, POAP_CONTRACT, Network.MAINNET);
@@ -97,14 +82,16 @@ export const getAddressInfo = (address: string) => {
   return fetch(url, {
     method: "GET",
     headers: getApiHeaders(),
+    retry: 3,
   }).then((response) => response.json());
 };
 
 export const getENS = (address: string) => {
   const url = `${POAP_API_BASEURL}/actions/ens_lookup/${address}`;
   return fetch(url, {
-    method: "GET",
+    method: 'GET',
     headers: getApiHeaders(),
+    retry: 3,
   }).then((response) => response.json());
 };
 
